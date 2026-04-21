@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 980" role="img" aria-labelledby="title desc">
+  <title id="title">RP2040 OLED Macro Pad Wiring Diagram</title>
+  <desc id="desc">Connection diagram showing an RP2040 board wired to an SSD1306 I2C OLED display, a rotary encoder, and a 4x4 keypad matrix.</desc>
+  <defs>
+    <style>
+      .bg { fill: #fbfaf4; }
+      .panel { fill: #ffffff; stroke: #243b53; stroke-width: 3; rx: 22; ry: 22; }
+      .board { fill: #eef4ff; stroke: #1f3a5f; stroke-width: 4; rx: 28; ry: 28; }
+      .soft { fill: #f7f9fc; stroke: #486581; stroke-width: 2.5; rx: 18; ry: 18; }
+      .power { stroke: #c53030; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .ground { stroke: #2d3748; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .signal-a { stroke: #0f766e; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .signal-b { stroke: #2563eb; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .signal-c { stroke: #7c3aed; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .signal-d { stroke: #b7791f; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .label { font-family: Arial, Helvetica, sans-serif; font-size: 24px; fill: #102a43; }
+      .small { font-family: Arial, Helvetica, sans-serif; font-size: 19px; fill: #334e68; }
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 36px; font-weight: 700; fill: #102a43; }
+      .subtitle { font-family: Arial, Helvetica, sans-serif; font-size: 21px; fill: #486581; }
+      .pin { font-family: "Courier New", monospace; font-size: 21px; fill: #102a43; }
+      .pinbox { fill: #ffffff; stroke: #486581; stroke-width: 2; rx: 10; ry: 10; }
+      .dot-red { fill: #c53030; }
+      .dot-dark { fill: #2d3748; }
+      .dot-teal { fill: #0f766e; }
+      .dot-blue { fill: #2563eb; }
+      .dot-violet { fill: #7c3aed; }
+      .dot-amber { fill: #b7791f; }
+      .matrix-line { stroke: #829ab1; stroke-width: 2.5; }
+      .switch { fill: #d9e2ec; stroke: #486581; stroke-width: 1.8; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1400" height="980"/>
+
+  <text class="title" x="700" y="62" text-anchor="middle">RP2040 OLED Macro Pad Wiring Diagram</text>
+  <text class="subtitle" x="700" y="95" text-anchor="middle">Target firmware pinout: GP0-GP9, GP14, GP15, 3V3, and GND</text>
+
+  <rect class="board" x="505" y="135" width="390" height="470"/>
+  <text class="title" x="700" y="185" text-anchor="middle" style="font-size:30px;">RP2040 Board</text>
+  <text class="subtitle" x="700" y="215" text-anchor="middle">Raspberry Pi Pico / Pico W / similar CircuitPython board</text>
+  <rect class="pinbox" x="640" y="250" width="120" height="56"/>
+  <text class="pin" x="700" y="286" text-anchor="middle">USB HID</text>
+  <text class="small" x="700" y="334" text-anchor="middle">Connect to computer with USB</text>
+
+  <rect class="pinbox" x="560" y="355" width="280" height="190"/>
+  <text class="label" x="700" y="392" text-anchor="middle">Pins used by this project</text>
+  <text class="pin" x="590" y="428">GP0  = OLED SDA</text>
+  <text class="pin" x="590" y="458">GP1  = OLED SCL</text>
+  <text class="pin" x="590" y="488">GP2-5 = Keypad Rows 1-4</text>
+  <text class="pin" x="590" y="518">GP6-9 = Keypad Cols 1-4</text>
+  <text class="pin" x="590" y="548">GP14/15 = Encoder A/B</text>
+
+  <rect class="soft" x="72" y="170" width="315" height="255"/>
+  <text class="title" x="229" y="215" text-anchor="middle" style="font-size:28px;">SSD1306 OLED</text>
+  <text class="subtitle" x="229" y="245" text-anchor="middle">128x64 I2C display</text>
+  <rect class="pinbox" x="132" y="275" width="110" height="40"/>
+  <text class="pin" x="187" y="301" text-anchor="middle">VCC</text>
+  <rect class="pinbox" x="132" y="325" width="110" height="40"/>
+  <text class="pin" x="187" y="351" text-anchor="middle">GND</text>
+  <rect class="pinbox" x="132" y="375" width="110" height="40"/>
+  <text class="pin" x="187" y="401" text-anchor="middle">SDA</text>
+  <rect class="pinbox" x="132" y="425" width="110" height="40"/>
+  <text class="pin" x="187" y="451" text-anchor="middle">SCL</text>
+  <text class="small" x="229" y="500" text-anchor="middle">Most SSD1306 modules use address 0x3C</text>
+
+  <rect class="soft" x="1022" y="185" width="290" height="215"/>
+  <text class="title" x="1167" y="228" text-anchor="middle" style="font-size:28px;">Rotary Encoder</text>
+  <text class="subtitle" x="1167" y="258" text-anchor="middle">Incremental encoder</text>
+  <rect class="pinbox" x="1087" y="292" width="120" height="40"/>
+  <text class="pin" x="1147" y="318" text-anchor="middle">A / CLK</text>
+  <rect class="pinbox" x="1087" y="342" width="120" height="40"/>
+  <text class="pin" x="1147" y="368" text-anchor="middle">B / DT</text>
+  <rect class="pinbox" x="1087" y="392" width="120" height="40"/>
+  <text class="pin" x="1147" y="418" text-anchor="middle">COM / GND</text>
+  <text class="small" x="1167" y="460" text-anchor="middle">Encoder push switch is not used in this code</text>
+
+  <rect class="soft" x="130" y="640" width="1140" height="280"/>
+  <text class="title" x="700" y="688" text-anchor="middle" style="font-size:30px;">4x4 Keypad Matrix</text>
+  <text class="subtitle" x="700" y="718" text-anchor="middle">Each key switch connects one row line to one column line</text>
+
+  <rect x="390" y="745" width="450" height="135" fill="#ffffff" stroke="#486581" stroke-width="2.5" rx="18" ry="18"/>
+
+  <line class="matrix-line" x1="470" y1="770" x2="470" y2="855"/>
+  <line class="matrix-line" x1="560" y1="770" x2="560" y2="855"/>
+  <line class="matrix-line" x1="650" y1="770" x2="650" y2="855"/>
+  <line class="matrix-line" x1="740" y1="770" x2="740" y2="855"/>
+
+  <line class="matrix-line" x1="410" y1="790" x2="820" y2="790"/>
+  <line class="matrix-line" x1="410" y1="820" x2="820" y2="820"/>
+  <line class="matrix-line" x1="410" y1="850" x2="820" y2="850"/>
+  <line class="matrix-line" x1="410" y1="880" x2="820" y2="880"/>
+
+  <circle class="switch" cx="470" cy="790" r="9"/>
+  <circle class="switch" cx="560" cy="790" r="9"/>
+  <circle class="switch" cx="650" cy="790" r="9"/>
+  <circle class="switch" cx="740" cy="790" r="9"/>
+  <circle class="switch" cx="470" cy="820" r="9"/>
+  <circle class="switch" cx="560" cy="820" r="9"/>
+  <circle class="switch" cx="650" cy="820" r="9"/>
+  <circle class="switch" cx="740" cy="820" r="9"/>
+  <circle class="switch" cx="470" cy="850" r="9"/>
+  <circle class="switch" cx="560" cy="850" r="9"/>
+  <circle class="switch" cx="650" cy="850" r="9"/>
+  <circle class="switch" cx="740" cy="850" r="9"/>
+  <circle class="switch" cx="470" cy="880" r="9"/>
+  <circle class="switch" cx="560" cy="880" r="9"/>
+  <circle class="switch" cx="650" cy="880" r="9"/>
+  <circle class="switch" cx="740" cy="880" r="9"/>
+
+  <text class="pin" x="470" y="758" text-anchor="middle">C1 / GP6</text>
+  <text class="pin" x="560" y="758" text-anchor="middle">C2 / GP7</text>
+  <text class="pin" x="650" y="758" text-anchor="middle">C3 / GP8</text>
+  <text class="pin" x="740" y="758" text-anchor="middle">C4 / GP9</text>
+
+  <text class="pin" x="320" y="798" text-anchor="end">R1 / GP2</text>
+  <text class="pin" x="320" y="828" text-anchor="end">R2 / GP3</text>
+  <text class="pin" x="320" y="858" text-anchor="end">R3 / GP4</text>
+  <text class="pin" x="320" y="888" text-anchor="end">R4 / GP5</text>
+
+  <text class="small" x="1035" y="800">Rows:</text>
+  <text class="pin" x="1080" y="800">GP2, GP3, GP4, GP5</text>
+  <text class="small" x="1018" y="840">Columns:</text>
+  <text class="pin" x="1080" y="840">GP6, GP7, GP8, GP9</text>
+  <text class="small" x="1025" y="880">Switches:</text>
+  <text class="pin" x="1080" y="880">16 momentary keys in matrix form</text>
+
+  <path class="power" d="M505 280 L445 280 L445 295 L242 295"/>
+  <circle class="dot-red" cx="505" cy="280" r="6"/>
+  <circle class="dot-red" cx="242" cy="295" r="6"/>
+  <text class="small" x="355" y="268" text-anchor="middle">3V3 to OLED VCC</text>
+
+  <path class="ground" d="M505 320 L420 320 L420 345 L242 345"/>
+  <circle class="dot-dark" cx="505" cy="320" r="6"/>
+  <circle class="dot-dark" cx="242" cy="345" r="6"/>
+  <text class="small" x="355" y="337" text-anchor="middle">GND to OLED GND</text>
+
+  <path class="signal-a" d="M505 410 L440 410 L440 395 L242 395"/>
+  <circle class="dot-teal" cx="505" cy="410" r="6"/>
+  <circle class="dot-teal" cx="242" cy="395" r="6"/>
+  <text class="small" x="352" y="387" text-anchor="middle">GP0 to SDA</text>
+
+  <path class="signal-b" d="M505 450 L455 450 L455 445 L242 445"/>
+  <circle class="dot-blue" cx="505" cy="450" r="6"/>
+  <circle class="dot-blue" cx="242" cy="445" r="6"/>
+  <text class="small" x="360" y="475" text-anchor="middle">GP1 to SCL</text>
+
+  <path class="signal-c" d="M895 500 L965 500 L965 312 L1087 312"/>
+  <circle class="dot-violet" cx="895" cy="500" r="6"/>
+  <circle class="dot-violet" cx="1087" cy="312" r="6"/>
+  <text class="small" x="1010" y="488" text-anchor="middle">GP14 to A / CLK</text>
+
+  <path class="signal-b" d="M895 540 L985 540 L985 362 L1087 362"/>
+  <circle class="dot-blue" cx="895" cy="540" r="6"/>
+  <circle class="dot-blue" cx="1087" cy="362" r="6"/>
+  <text class="small" x="1033" y="572" text-anchor="middle">GP15 to B / DT</text>
+
+  <path class="ground" d="M895 580 L1005 580 L1005 412 L1087 412"/>
+  <circle class="dot-dark" cx="895" cy="580" r="6"/>
+  <circle class="dot-dark" cx="1087" cy="412" r="6"/>
+  <text class="small" x="1035" y="610" text-anchor="middle">GND to encoder common</text>
+
+  <path class="signal-d" d="M560 605 L560 700 L320 700 L320 790 L390 790"/>
+  <circle class="dot-amber" cx="560" cy="605" r="6"/>
+  <circle class="dot-amber" cx="390" cy="790" r="6"/>
+  <text class="small" x="288" y="690">GP2 to Row 1</text>
+
+  <path class="signal-d" d="M610 605 L610 715 L350 715 L350 820 L390 820"/>
+  <circle class="dot-amber" cx="610" cy="605" r="6"/>
+  <circle class="dot-amber" cx="390" cy="820" r="6"/>
+  <text class="small" x="318" y="738">GP3 to Row 2</text>
+
+  <path class="signal-d" d="M660 605 L660 730 L365 730 L365 850 L390 850"/>
+  <circle class="dot-amber" cx="660" cy="605" r="6"/>
+  <circle class="dot-amber" cx="390" cy="850" r="6"/>
+  <text class="small" x="333" y="786">GP4 to Row 3</text>
+
+  <path class="signal-d" d="M710 605 L710 745 L380 745 L380 880 L390 880"/>
+  <circle class="dot-amber" cx="710" cy="605" r="6"/>
+  <circle class="dot-amber" cx="390" cy="880" r="6"/>
+  <text class="small" x="348" y="834">GP5 to Row 4</text>
+
+  <path class="signal-a" d="M755 605 L755 680 L470 680 L470 745"/>
+  <circle class="dot-teal" cx="755" cy="605" r="6"/>
+  <circle class="dot-teal" cx="470" cy="745" r="6"/>
+  <text class="small" x="470" y="667" text-anchor="middle">GP6 to Col 1</text>
+
+  <path class="signal-a" d="M800 605 L800 660 L560 660 L560 745"/>
+  <circle class="dot-teal" cx="800" cy="605" r="6"/>
+  <circle class="dot-teal" cx="560" cy="745" r="6"/>
+  <text class="small" x="560" y="647" text-anchor="middle">GP7 to Col 2</text>
+
+  <path class="signal-a" d="M845 605 L845 640 L650 640 L650 745"/>
+  <circle class="dot-teal" cx="845" cy="605" r="6"/>
+  <circle class="dot-teal" cx="650" cy="745" r="6"/>
+  <text class="small" x="650" y="627" text-anchor="middle">GP8 to Col 3</text>
+
+  <path class="signal-a" d="M890 605 L890 620 L740 620 L740 745"/>
+  <circle class="dot-teal" cx="890" cy="605" r="6"/>
+  <circle class="dot-teal" cx="740" cy="745" r="6"/>
+  <text class="small" x="740" y="607" text-anchor="middle">GP9 to Col 4</text>
+
+  <text class="small" x="140" y="955">Tip: add diodes if you want better protection against keypad ghosting during multi-key presses.</text>
+</svg>
