@@ -4,6 +4,8 @@ import busio
 import rotaryio
 import usb_hid
 import adafruit_ssd1306
+import microcontroller
+import watchdog
 from digitalio import DigitalInOut, Direction, Pull
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
@@ -16,6 +18,16 @@ oled = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
 kbd = Keyboard(usb_hid.devices)
 cc = ConsumerControl(usb_hid.devices)
 encoder = rotaryio.IncrementalEncoder(board.GP14, board.GP15)
+
+# ------------- WATCHDOG SETUP -------------
+# Auto-resets the board if the loop stalls for > 2 seconds
+try:
+    wdt = microcontroller.watchdog
+    wdt.timeout = 2.0
+    wdt.mode = watchdog.WatchDogMode.RESET
+    wdt.feed()
+except Exception:
+    wdt = None
 
 # Key matrix
 row_pins = [board.GP2, board.GP3, board.GP4, board.GP5]
@@ -78,70 +90,73 @@ def execute_action(action):
     global volume_level, last_action, current_mode, display_dirty
     action = action.strip().upper()
 
-    if action in ("PLAY_PAUSE", "PLAY"):
-        cc.send(ConsumerControlCode.PLAY_PAUSE)
-        last_action = "PLAY/PAUSE"
-    elif action in ("PREV_TRACK", "PREV"):
-        cc.send(ConsumerControlCode.SCAN_PREVIOUS_TRACK)
-        last_action = "PREV TRACK"
-    elif action in ("NEXT_TRACK", "NEXT"):
-        cc.send(ConsumerControlCode.SCAN_NEXT_TRACK)
-        last_action = "NEXT TRACK"
-    elif action == "MUTE":
-        cc.send(ConsumerControlCode.MUTE)
-        last_action = "MUTE"
-    elif action == "VOLUP":
-        cc.send(ConsumerControlCode.VOLUME_INCREMENT)
-        volume_level = min(100, volume_level + 2)
-        last_action = "VOL +2"
-    elif action == "VOLDN":
-        cc.send(ConsumerControlCode.VOLUME_DECREMENT)
-        volume_level = max(0, volume_level - 2)
-        last_action = "VOL -2"
-    elif action in ("WORKPLACE_RIGHT", "WORKPLACE"):
-        kbd.send(Keycode.CONTROL, Keycode.RIGHT_ARROW)
-        last_action = "WORKPLACE →"
-    elif action in ("QUIT_APP", "QUIT"):
-        kbd.press(Keycode.GUI, Keycode.Q)
-        time.sleep(0.05)
-        kbd.release_all()
-        last_action = "QUIT APP"
-    elif action in ("DICTATION", "DICTATE"):
-        kbd.press(Keycode.CONTROL)
-        kbd.release(Keycode.CONTROL)
-        time.sleep(0.03)
-        kbd.press(Keycode.CONTROL)
-        kbd.release(Keycode.CONTROL)
-        last_action = "DICTATION"
-    elif action in ("MODE_TOGGLE", "MODE"):
-        current_mode = (current_mode + 1) % 2
-        last_action = "MODE: VOL" if current_mode == 0 else "MODE: SCRL"
-    elif action in ("SCREENSHOT", "SNIP"):
-        kbd.send(Keycode.GUI, Keycode.SHIFT, Keycode.FOUR)
-        last_action = "SCREENSHOT"
-    elif action == "COPY":
-        kbd.send(Keycode.GUI, Keycode.C)
-        last_action = "COPY"
-    elif action == "PASTE":
-        kbd.send(Keycode.GUI, Keycode.V)
-        last_action = "PASTE"
-    elif action == "UNDO":
-        kbd.send(Keycode.GUI, Keycode.Z)
-        last_action = "UNDO"
-    elif action in ("SWITCH_TABS", "TABS"):
-        kbd.send(Keycode.CONTROL, Keycode.TAB)
-        last_action = "SWITCH TABS"
-    elif action == "ZOOM_IN":
-        kbd.send(Keycode.GUI, Keycode.EQUALS)
-        last_action = "ZOOM IN"
-    elif action == "ZOOM_OUT":
-        kbd.send(Keycode.GUI, Keycode.MINUS)
-        last_action = "ZOOM OUT"
-    elif action == "DESKTOP":
-        kbd.send(Keycode.F11)
-        last_action = "DESKTOP"
-    else:
-        return False
+    try:
+        if action in ("PLAY_PAUSE", "PLAY"):
+            cc.send(ConsumerControlCode.PLAY_PAUSE)
+            last_action = "PLAY/PAUSE"
+        elif action in ("PREV_TRACK", "PREV"):
+            cc.send(ConsumerControlCode.SCAN_PREVIOUS_TRACK)
+            last_action = "PREV TRACK"
+        elif action in ("NEXT_TRACK", "NEXT"):
+            cc.send(ConsumerControlCode.SCAN_NEXT_TRACK)
+            last_action = "NEXT TRACK"
+        elif action == "MUTE":
+            cc.send(ConsumerControlCode.MUTE)
+            last_action = "MUTE"
+        elif action == "VOLUP":
+            cc.send(ConsumerControlCode.VOLUME_INCREMENT)
+            volume_level = min(100, volume_level + 2)
+            last_action = "VOL +2"
+        elif action == "VOLDN":
+            cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+            volume_level = max(0, volume_level - 2)
+            last_action = "VOL -2"
+        elif action in ("WORKPLACE_RIGHT", "WORKPLACE"):
+            kbd.send(Keycode.CONTROL, Keycode.RIGHT_ARROW)
+            last_action = "WORKPLACE →"
+        elif action in ("QUIT_APP", "QUIT"):
+            kbd.press(Keycode.GUI, Keycode.Q)
+            time.sleep(0.05)
+            kbd.release_all()
+            last_action = "QUIT APP"
+        elif action in ("DICTATION", "DICTATE"):
+            kbd.press(Keycode.CONTROL)
+            kbd.release(Keycode.CONTROL)
+            time.sleep(0.03)
+            kbd.press(Keycode.CONTROL)
+            kbd.release(Keycode.CONTROL)
+            last_action = "DICTATION"
+        elif action in ("MODE_TOGGLE", "MODE"):
+            current_mode = (current_mode + 1) % 2
+            last_action = "MODE: VOL" if current_mode == 0 else "MODE: SCRL"
+        elif action in ("SCREENSHOT", "SNIP"):
+            kbd.send(Keycode.GUI, Keycode.SHIFT, Keycode.FOUR)
+            last_action = "SCREENSHOT"
+        elif action == "COPY":
+            kbd.send(Keycode.GUI, Keycode.C)
+            last_action = "COPY"
+        elif action == "PASTE":
+            kbd.send(Keycode.GUI, Keycode.V)
+            last_action = "PASTE"
+        elif action == "UNDO":
+            kbd.send(Keycode.GUI, Keycode.Z)
+            last_action = "UNDO"
+        elif action in ("SWITCH_TABS", "TABS"):
+            kbd.send(Keycode.CONTROL, Keycode.TAB)
+            last_action = "SWITCH TABS"
+        elif action == "ZOOM_IN":
+            kbd.send(Keycode.GUI, Keycode.EQUALS)
+            last_action = "ZOOM IN"
+        elif action == "ZOOM_OUT":
+            kbd.send(Keycode.GUI, Keycode.MINUS)
+            last_action = "ZOOM OUT"
+        elif action == "DESKTOP":
+            kbd.send(Keycode.F11)
+            last_action = "DESKTOP"
+        else:
+            return False
+    except Exception:
+        pass # Ignore USB blocking errors if host is asleep
 
     display_dirty = True
     wake_oled()
@@ -211,30 +226,39 @@ def wake_oled():
         display_dirty = True
 
 # ------------- MAIN LOOP -------------
-print("MacroPad – 24/7 stable, safe OLED sleep")
+print("MacroPad – 24/7 stable, safe OLED sleep, hardware watchdog")
 
 while True:
+    if wdt:
+        wdt.feed()
+
     # --- Encoder (overflow‑proof) ---
     delta = get_encoder_delta()
     if delta != 0:
         wake_oled()
         delta = max(-5, min(5, delta))
         if current_mode == 0:
-            for _ in range(abs(delta)):
-                if delta > 0:
-                    cc.send(ConsumerControlCode.VOLUME_INCREMENT)
-                else:
-                    cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+            try:
+                for _ in range(abs(delta)):
+                    if delta > 0:
+                        cc.send(ConsumerControlCode.VOLUME_INCREMENT)
+                    else:
+                        cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+            except Exception:
+                pass
             volume_level = max(0, min(100, volume_level + delta * 2))
             last_action = "VOL ADJUST"
         else:
             target_key = Keycode.DOWN_ARROW if delta > 0 else Keycode.UP_ARROW
-            if scroll_key_held and scroll_key_held != target_key:
-                kbd.release(scroll_key_held)
-                scroll_key_held = None
-            if not scroll_key_held:
-                kbd.press(target_key)
-                scroll_key_held = target_key
+            try:
+                if scroll_key_held and scroll_key_held != target_key:
+                    kbd.release(scroll_key_held)
+                    scroll_key_held = None
+                if not scroll_key_held:
+                    kbd.press(target_key)
+                    scroll_key_held = target_key
+            except Exception:
+                pass
             scroll_hold_time = time.monotonic()
             last_action = "SCROLL DN" if delta > 0 else "SCROLL UP"
         display_dirty = True
@@ -268,7 +292,10 @@ while True:
 
     # --- Scroll key auto‑release ---
     if scroll_key_held and (time.monotonic() - scroll_hold_time > SCROLL_HOLD_DURATION):
-        kbd.release(scroll_key_held)
+        try:
+            kbd.release(scroll_key_held)
+        except Exception:
+            pass
         scroll_key_held = None
 
     # --- Display update (safe) ---
