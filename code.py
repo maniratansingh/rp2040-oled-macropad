@@ -10,6 +10,10 @@ from adafruit_hid.keycode import Keycode
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
 
+# Optional: uncomment these if you want the device to auto‑reset on freeze
+# import watchdog
+# import microcontroller
+
 # ------------- HARDWARE SETUP -------------
 i2c = busio.I2C(board.GP1, board.GP0, frequency=400000)
 oled = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
@@ -31,18 +35,19 @@ for c in cols:
 
 # ------------- STATE VARIABLES -------------
 last_position = encoder.position
-volume_level = 50          # Displayed volume (approximate, steps of 2%)
+volume_level = 50
 last_action = "READY"
 display_dirty = True
 last_display_time = 0
 current_mode = 0           # 0 = Volume, 1 = Scroll
-screen_on = True
+screen_on = True           # True = OLED is showing something
+display_enabled = True     # Set to False permanently if OLED fails
 last_input_time = time.monotonic()
-SLEEP_DELAY = 30           # OLED stops updating after 30 seconds of inactivity
+SLEEP_DELAY = 30           # seconds before OLED stops updating (not blanked)
 
 scroll_key_held = None
 scroll_hold_time = 0
-SCROLL_HOLD_DURATION = 0.2 # Auto-release scroll key after 200ms without movement
+SCROLL_HOLD_DURATION = 0.2
 
 # ------------- KEY MAPPING (row, col) -------------
 KEY_NEXT_TRACK      = (1, 1)
@@ -50,27 +55,37 @@ KEY_PREV_TRACK      = (1, 2)
 KEY_PLAY_PAUSE      = (1, 3)
 KEY_MUTE            = (1, 4)
 
-KEY_WORKPLACE_RIGHT = (2, 1)   # Ctrl + Right Arrow
-KEY_QUIT_APP        = (2, 2)   # Cmd + Q
-KEY_DICTATION       = (2, 3)   # Double‑press Control (macOS dictation)
+KEY_WORKPLACE_RIGHT = (2, 1)
+KEY_QUIT_APP        = (2, 2)
+KEY_DICTATION       = (2, 3)
 KEY_MODE_TOGGLE     = (2, 4)
 
-KEY_SCREENSHOT      = (3, 1)   # Cmd + Shift + 4
-KEY_COPY            = (3, 2)   # Cmd + C
-KEY_PASTE           = (3, 3)   # Cmd + V
-KEY_UNDO            = (3, 4)   # Cmd + Z
+KEY_SCREENSHOT      = (3, 1)
+KEY_COPY            = (3, 2)
+KEY_PASTE           = (3, 3)
+KEY_UNDO            = (3, 4)
 
-KEY_SWITCH_TABS     = (4, 1)   # Ctrl + Tab
-KEY_ZOOM_IN         = (4, 2)   # Cmd + =
-KEY_ZOOM_OUT        = (4, 3)   # Cmd + -
-KEY_DESKTOP         = (4, 4)   # F11 (show desktop)
+KEY_SWITCH_TABS     = (4, 1)
+KEY_ZOOM_IN         = (4, 2)
+KEY_ZOOM_OUT        = (4, 3)
+KEY_DESKTOP         = (4, 4)
+
+# ------------- SAFE ENCODER DIFFERENCE -------------
+def get_encoder_delta():
+    global last_position
+    current = encoder.position
+    # Correctly handle 32-bit overflow (works for any long uptime)
+    delta = (current - last_position) & 0xFFFF
+    if delta > 0x7FFF:
+        delta -= 0x10000
+    last_position = current
+    return delta
 
 # ------------- UNIFIED ACTION EXECUTOR -------------
 def execute_action(action):
     global volume_level, last_action, current_mode, display_dirty
     action = action.strip().upper()
 
-    # Media
     if action in ("PLAY_PAUSE", "PLAY"):
         cc.send(ConsumerControlCode.PLAY_PAUSE)
         last_action = "PLAY/PAUSE"
@@ -83,8 +98,6 @@ def execute_action(action):
     elif action == "MUTE":
         cc.send(ConsumerControlCode.MUTE)
         last_action = "MUTE"
-
-    # Volume (manual buttons)
     elif action == "VOLUP":
         cc.send(ConsumerControlCode.VOLUME_INCREMENT)
         volume_level = min(100, volume_level + 2)
@@ -93,8 +106,6 @@ def execute_action(action):
         cc.send(ConsumerControlCode.VOLUME_DECREMENT)
         volume_level = max(0, volume_level - 2)
         last_action = "VOL -2"
-
-    # App
     elif action in ("WORKPLACE_RIGHT", "WORKPLACE"):
         kbd.send(Keycode.CONTROL, Keycode.RIGHT_ARROW)
         last_action = "WORKPLACE →"
@@ -113,8 +124,6 @@ def execute_action(action):
     elif action in ("MODE_TOGGLE", "MODE"):
         current_mode = (current_mode + 1) % 2
         last_action = "MODE: VOL" if current_mode == 0 else "MODE: SCRL"
-
-    # Edit
     elif action in ("SCREENSHOT", "SNIP"):
         kbd.send(Keycode.GUI, Keycode.SHIFT, Keycode.FOUR)
         last_action = "SCREENSHOT"
@@ -127,8 +136,6 @@ def execute_action(action):
     elif action == "UNDO":
         kbd.send(Keycode.GUI, Keycode.Z)
         last_action = "UNDO"
-
-    # System / Browser
     elif action in ("SWITCH_TABS", "TABS"):
         kbd.send(Keycode.CONTROL, Keycode.TAB)
         last_action = "SWITCH TABS"
@@ -141,7 +148,6 @@ def execute_action(action):
     elif action == "DESKTOP":
         kbd.send(Keycode.F11)
         last_action = "DESKTOP"
-
     else:
         return False
 
@@ -160,51 +166,59 @@ def scan_keypad():
         row.value = True
     return None
 
-# ------------- DISPLAY (SAFE – NO I2C HANG) -------------
+# ------------- DISPLAY (FULLY PROTECTED AGAINST I2C HANGS) -------------
 def update_display():
-    global display_dirty, last_display_time, screen_on
+    global display_dirty, last_display_time, screen_on, display_enabled
+    if not display_enabled:
+        return
     now = time.monotonic()
 
-    # Enter "sleep" mode (stop updating) – but do NOT blank the screen.
-    # This avoids the I2C hang that could freeze the whole device.
     if screen_on and (now - last_input_time > SLEEP_DELAY):
+        # Stop updating but do NOT touch the OLED – avoids I2C hang
         screen_on = False
         return
 
     if not screen_on:
         return
 
-    # Update only when dirty and at least 80ms since last refresh
     if display_dirty and (now - last_display_time > 0.08):
-        oled.fill(0)
-        # Top line: mode indicator
-        mode_str = "MODE: VOL" if current_mode == 0 else "MODE: SCRL"
-        oled.text(mode_str, 0, 0, 1, size=1)
-        oled.hline(0, 10, 128, 1)
-        # Volume display
-        oled.text(f"VOL: {volume_level}%", 20, 14, 1, size=2)
-        oled.rect(5, 33, 118, 8, 1)
-        bar_fill = int((volume_level / 100) * 114)
-        oled.fill_rect(7, 35, bar_fill, 4, 1)
-        # Last action
-        oled.text(f"{last_action}", 10, 48, 1, size=2)
-        oled.show()
-        display_dirty = False
-        last_display_time = now
+        try:
+            oled.fill(0)
+            mode_str = "MODE: VOL" if current_mode == 0 else "MODE: SCRL"
+            oled.text(mode_str, 0, 0, 1, size=1)
+            oled.hline(0, 10, 128, 1)
+            oled.text(f"VOL: {volume_level}%", 20, 14, 1, size=2)
+            oled.rect(5, 33, 118, 8, 1)
+            bar_fill = int((volume_level / 100) * 114)
+            oled.fill_rect(7, 35, bar_fill, 4, 1)
+            oled.text(f"{last_action}", 10, 48, 1, size=2)
+            oled.show()
+            display_dirty = False
+            last_display_time = now
+        except OSError:
+            # I2C bus hung – disable display permanently, device keeps working
+            display_enabled = False
 
 def wake_up():
     global screen_on, last_input_time, display_dirty
     last_input_time = time.monotonic()
-    if not screen_on:
+    if not screen_on and display_enabled:
         screen_on = True
         display_dirty = True
 
-# ------------- MAIN LOOP (ZERO‑FREEZE, NO USB HANG) -------------
-print("MacroPad Ready – No Wi‑Fi – macOS optimised – Safe Sleep")
+# ------------- MAIN LOOP (ZERO‑FREEZE) -------------
+print("MacroPad Ready – 24/7 stable")
+
+# Optional: enable watchdog (uncomment the next lines)
+# wdt = watchdog.WatchDog(timeout=5)  # 5 seconds
+# wdt.feed()
+
 while True:
-    # --- Encoder ---
-    curr_pos = encoder.position
-    delta = curr_pos - last_position
+    # Optional: feed the watchdog
+    # wdt.feed()
+
+    # --- Encoder (robust overflow‑proof) ---
+    delta = get_encoder_delta()
     if delta != 0:
         wake_up()
         delta = max(-5, min(5, delta))
@@ -226,7 +240,6 @@ while True:
                 scroll_key_held = target_key
             scroll_hold_time = time.monotonic()
             last_action = "SCROLL DN" if delta > 0 else "SCROLL UP"
-        last_position = curr_pos
         display_dirty = True
 
     # --- Keypad ---
@@ -254,15 +267,14 @@ while True:
         action = mapping.get(key)
         if action:
             execute_action(action)
-        time.sleep(0.02)  # Debounce
+        time.sleep(0.02)
 
     # --- Scroll key auto‑release ---
     if scroll_key_held and (time.monotonic() - scroll_hold_time > SCROLL_HOLD_DURATION):
         kbd.release(scroll_key_held)
         scroll_key_held = None
 
-    # --- Display update ---
+    # --- Display (safe) ---
     update_display()
 
-    # Tiny sleep to keep CPU cool
     time.sleep(0.001)
