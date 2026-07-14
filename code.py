@@ -38,7 +38,7 @@ last_display_time = 0
 current_mode = 0           # 0 = Volume, 1 = Scroll
 screen_on = True
 last_input_time = time.monotonic()
-SLEEP_DELAY = 30           # OLED sleep after 30 seconds of inactivity
+SLEEP_DELAY = 30           # OLED stops updating after 30 seconds of inactivity
 
 scroll_key_held = None
 scroll_hold_time = 0
@@ -160,18 +160,20 @@ def scan_keypad():
         row.value = True
     return None
 
-# ------------- DISPLAY -------------
+# ------------- DISPLAY (SAFE – NO I2C HANG) -------------
 def update_display():
     global display_dirty, last_display_time, screen_on
     now = time.monotonic()
-    # Sleep after inactivity
+
+    # Enter "sleep" mode (stop updating) – but do NOT blank the screen.
+    # This avoids the I2C hang that could freeze the whole device.
     if screen_on and (now - last_input_time > SLEEP_DELAY):
-        oled.fill(0)
-        oled.show()
         screen_on = False
         return
+
     if not screen_on:
         return
+
     # Update only when dirty and at least 80ms since last refresh
     if display_dirty and (now - last_display_time > 0.08):
         oled.fill(0)
@@ -197,18 +199,16 @@ def wake_up():
         screen_on = True
         display_dirty = True
 
-# ------------- MAIN LOOP (ZERO‑FREEZE) -------------
-print("MacroPad Ready – No Wi‑Fi – macOS optimised")
+# ------------- MAIN LOOP (ZERO‑FREEZE, NO USB HANG) -------------
+print("MacroPad Ready – No Wi‑Fi – macOS optimised – Safe Sleep")
 while True:
     # --- Encoder ---
     curr_pos = encoder.position
     delta = curr_pos - last_position
     if delta != 0:
         wake_up()
-        # Cap delta to avoid massive bursts
         delta = max(-5, min(5, delta))
         if current_mode == 0:
-            # Volume mode
             for _ in range(abs(delta)):
                 if delta > 0:
                     cc.send(ConsumerControlCode.VOLUME_INCREMENT)
@@ -217,7 +217,6 @@ while True:
             volume_level = max(0, min(100, volume_level + delta * 2))
             last_action = "VOL ADJUST"
         else:
-            # Scroll mode (arrow keys)
             target_key = Keycode.DOWN_ARROW if delta > 0 else Keycode.UP_ARROW
             if scroll_key_held and scroll_key_held != target_key:
                 kbd.release(scroll_key_held)
