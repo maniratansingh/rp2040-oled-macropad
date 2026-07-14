@@ -17,6 +17,13 @@ A 16-key USB macro pad built with CircuitPython, a 128x64 SSD1306 OLED, and a ro
 - USB HID keyboard shortcuts and consumer control media commands
 - App switcher key that holds `Cmd` until the button is released
 
+## Code Versions
+
+This repository contains multiple versions of the macro pad code to suit different needs:
+
+- **`code.py` (No Wi-Fi - Recommended/Primary)**: This is the default, most stable version of the code. It strictly focuses on reading the hardware (encoder, keypad) and sending immediate USB HID commands. Because it doesn't manage network connections, it provides a "zero-freeze" experience with instant responsiveness. **Use this version for daily driving and maximum stability.**
+- **`code_wifi.py` (Wi-Fi Web Server)**: This version includes all standard macro pad features but adds a local web server interface. It allows you to control the macro pad remotely via a smartphone or browser. **Note:** Due to the single-threaded nature of the microcontroller, managing network sockets can occasionally cause the physical keypad to temporarily stall or "freeze" while processing Wi-Fi traffic or reconnecting to a router.
+- **`code_backup.py`**: The original codebase saved for backup purposes.
 ## Demo Behavior
 
 When the macro pad is powered and connected over USB:
