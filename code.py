@@ -10,10 +10,6 @@ from adafruit_hid.keycode import Keycode
 from adafruit_hid.consumer_control import ConsumerControl
 from adafruit_hid.consumer_control_code import ConsumerControlCode
 
-# Optional: uncomment these if you want the device to auto‑reset on freeze
-# import watchdog
-# import microcontroller
-
 # ------------- HARDWARE SETUP -------------
 i2c = busio.I2C(board.GP1, board.GP0, frequency=400000)
 oled = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
@@ -21,7 +17,7 @@ kbd = Keyboard(usb_hid.devices)
 cc = ConsumerControl(usb_hid.devices)
 encoder = rotaryio.IncrementalEncoder(board.GP14, board.GP15)
 
-# Key matrix (4×4)
+# Key matrix
 row_pins = [board.GP2, board.GP3, board.GP4, board.GP5]
 col_pins = [board.GP6, board.GP7, board.GP8, board.GP9]
 rows = [DigitalInOut(p) for p in row_pins]
@@ -33,38 +29,35 @@ for c in cols:
     c.direction = Direction.INPUT
     c.pull = Pull.UP
 
-# ------------- STATE VARIABLES -------------
+# ------------- STATE -------------
 last_position = encoder.position
 volume_level = 50
 last_action = "READY"
 display_dirty = True
 last_display_time = 0
-current_mode = 0           # 0 = Volume, 1 = Scroll
-screen_on = True           # True = OLED is showing something
-display_enabled = True     # Set to False permanently if OLED fails
+current_mode = 0           # 0=Volume, 1=Scroll
+oled_awake = True          # True = display on, False = sleeping
+display_enabled = True     # set to False if I2C ever fails
 last_input_time = time.monotonic()
-SLEEP_DELAY = 30           # seconds before OLED stops updating (not blanked)
+SLEEP_DELAY = 30           # seconds until OLED enters sleep
 
 scroll_key_held = None
 scroll_hold_time = 0
 SCROLL_HOLD_DURATION = 0.2
 
-# ------------- KEY MAPPING (row, col) -------------
+# ------------- KEY MAPPING -------------
 KEY_NEXT_TRACK      = (1, 1)
 KEY_PREV_TRACK      = (1, 2)
 KEY_PLAY_PAUSE      = (1, 3)
 KEY_MUTE            = (1, 4)
-
 KEY_WORKPLACE_RIGHT = (2, 1)
 KEY_QUIT_APP        = (2, 2)
 KEY_DICTATION       = (2, 3)
 KEY_MODE_TOGGLE     = (2, 4)
-
 KEY_SCREENSHOT      = (3, 1)
 KEY_COPY            = (3, 2)
 KEY_PASTE           = (3, 3)
 KEY_UNDO            = (3, 4)
-
 KEY_SWITCH_TABS     = (4, 1)
 KEY_ZOOM_IN         = (4, 2)
 KEY_ZOOM_OUT        = (4, 3)
@@ -74,7 +67,6 @@ KEY_DESKTOP         = (4, 4)
 def get_encoder_delta():
     global last_position
     current = encoder.position
-    # Correctly handle 32-bit overflow (works for any long uptime)
     delta = (current - last_position) & 0xFFFF
     if delta > 0x7FFF:
         delta -= 0x10000
@@ -152,7 +144,7 @@ def execute_action(action):
         return False
 
     display_dirty = True
-    wake_up()
+    wake_oled()
     return True
 
 # ------------- KEYPAD SCANNER -------------
@@ -166,21 +158,27 @@ def scan_keypad():
         row.value = True
     return None
 
-# ------------- DISPLAY (FULLY PROTECTED AGAINST I2C HANGS) -------------
+# ------------- DISPLAY (SAFE SLEEP + I2C PROTECTION) -------------
 def update_display():
-    global display_dirty, last_display_time, screen_on, display_enabled
+    global display_dirty, last_display_time, oled_awake, display_enabled
     if not display_enabled:
         return
     now = time.monotonic()
 
-    if screen_on and (now - last_input_time > SLEEP_DELAY):
-        # Stop updating but do NOT touch the OLED – avoids I2C hang
-        screen_on = False
+    # Handle sleep timeout: put OLED to deep sleep (no burn-in)
+    if oled_awake and (now - last_input_time > SLEEP_DELAY):
+        try:
+            oled.power(False)   # SSD1306 sleep command, no I2C burst
+            oled_awake = False
+        except OSError:
+            display_enabled = False
         return
 
-    if not screen_on:
+    # If sleeping, do nothing
+    if not oled_awake:
         return
 
+    # Refresh screen only when dirty and not too often
     if display_dirty and (now - last_display_time > 0.08):
         try:
             oled.fill(0)
@@ -196,31 +194,30 @@ def update_display():
             display_dirty = False
             last_display_time = now
         except OSError:
-            # I2C bus hung – disable display permanently, device keeps working
             display_enabled = False
 
-def wake_up():
-    global screen_on, last_input_time, display_dirty
+def wake_oled():
+    global oled_awake, last_input_time, display_dirty
     last_input_time = time.monotonic()
-    if not screen_on and display_enabled:
-        screen_on = True
+    if not oled_awake and display_enabled:
+        try:
+            oled.power(True)    # wake from sleep
+            oled_awake = True
+            display_dirty = True
+        except OSError:
+            display_enabled = False
+    else:
+        # already awake, just reset the sleep timer
         display_dirty = True
 
-# ------------- MAIN LOOP (ZERO‑FREEZE) -------------
-print("MacroPad Ready – 24/7 stable")
-
-# Optional: enable watchdog (uncomment the next lines)
-# wdt = watchdog.WatchDog(timeout=5)  # 5 seconds
-# wdt.feed()
+# ------------- MAIN LOOP -------------
+print("MacroPad – 24/7 stable, safe OLED sleep")
 
 while True:
-    # Optional: feed the watchdog
-    # wdt.feed()
-
-    # --- Encoder (robust overflow‑proof) ---
+    # --- Encoder (overflow‑proof) ---
     delta = get_encoder_delta()
     if delta != 0:
-        wake_up()
+        wake_oled()
         delta = max(-5, min(5, delta))
         if current_mode == 0:
             for _ in range(abs(delta)):
@@ -245,7 +242,7 @@ while True:
     # --- Keypad ---
     key = scan_keypad()
     if key:
-        wake_up()
+        wake_oled()
         mapping = {
             KEY_NEXT_TRACK: "NEXT_TRACK",
             KEY_PREV_TRACK: "PREV_TRACK",
@@ -274,7 +271,7 @@ while True:
         kbd.release(scroll_key_held)
         scroll_key_held = None
 
-    # --- Display (safe) ---
+    # --- Display update (safe) ---
     update_display()
 
     time.sleep(0.001)
