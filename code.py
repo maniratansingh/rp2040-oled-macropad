@@ -234,8 +234,7 @@ def update_display():
     global display_dirty, last_display_time, screen_on
     now = time.monotonic()
     if screen_on and (now - last_input_time > SLEEP_DELAY):
-        oled.fill(0)
-        oled.show()
+        oled.power(False)   # safe sleep: single I2C byte, no framebuffer dump
         screen_on = False
         print("Screen Sleeping...")
     if screen_on and display_dirty and (now - last_display_time > 0.08):
@@ -255,6 +254,7 @@ def wake_up():
     global screen_on, last_input_time, display_dirty
     last_input_time = time.monotonic()
     if not screen_on:
+        oled.power(True)    # wake display before redraw
         screen_on = True
         display_dirty = True
 
