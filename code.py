@@ -234,7 +234,8 @@ def update_display():
     global display_dirty, last_display_time, screen_on
     now = time.monotonic()
     if screen_on and (now - last_input_time > SLEEP_DELAY):
-        oled.power(False)   # safe sleep: single I2C byte, no framebuffer dump
+        oled.fill(0)
+        oled.show()
         screen_on = False
         print("Screen Sleeping...")
     if screen_on and display_dirty and (now - last_display_time > 0.08):
@@ -254,7 +255,6 @@ def wake_up():
     global screen_on, last_input_time, display_dirty
     last_input_time = time.monotonic()
     if not screen_on:
-        oled.power(True)    # wake display before redraw
         screen_on = True
         display_dirty = True
 
@@ -265,106 +265,109 @@ def execute_action(action):
     
     action = action.strip().upper()
     
-    # Media Controls
-    if action == "PLAY_PAUSE" or action == "PLAY":
-        cc.send(ConsumerControlCode.PLAY_PAUSE)
-        last_action = "PLAY/PAUSE"
-    
-    elif action == "PREV_TRACK" or action == "PREV":
-        cc.send(ConsumerControlCode.SCAN_PREVIOUS_TRACK)
-        last_action = "PREV TRACK"
-    
-    elif action == "NEXT_TRACK" or action == "NEXT":
-        cc.send(ConsumerControlCode.SCAN_NEXT_TRACK)
-        last_action = "NEXT TRACK"
-    
-    elif action == "MUTE":
-        cc.send(ConsumerControlCode.MUTE)
-        last_action = "MUTE"
-    
-    # Volume Controls
-    elif action == "VOLUP":
-        cc.send(ConsumerControlCode.VOLUME_INCREMENT)
-        volume_level = min(100, volume_level + 2)
-        last_action = "VOL +2"
-    
-    elif action == "VOLDN":
-        cc.send(ConsumerControlCode.VOLUME_DECREMENT)
-        volume_level = max(0, volume_level - 2)
-        last_action = "VOL -2"
-    
-    # App Controls
-    elif action == "WORKPLACE_RIGHT" or action == "WORKPLACE":
-        kbd.send(Keycode.CONTROL, Keycode.RIGHT_ARROW)
-        last_action = "WORKPLACE →"
-    
-    elif action == "QUIT_APP" or action == "QUIT":
-        kbd.press(Keycode.GUI, Keycode.Q)
-        time.sleep(0.05)
-        kbd.release_all()
-        last_action = "QUIT APP"
-    
-    elif action == "DICTATION" or action == "DICTATE":
-        # Double‑press Control key quickly for dictation
-        kbd.press(Keycode.CONTROL)
-        kbd.release(Keycode.CONTROL)
-        time.sleep(0.03)  # Very short delay between presses
-        kbd.press(Keycode.CONTROL)
-        kbd.release(Keycode.CONTROL)
-        last_action = "DICTATION"
-    
-    elif action == "MODE_TOGGLE" or action == "MODE":
-        current_mode = (current_mode + 1) % 2
-        last_action = "MODE: VOL" if current_mode == 0 else "MODE: SCRL"
-    
-    # Edit Controls
-    elif action == "SCREENSHOT" or action == "SNIP":
-        kbd.send(Keycode.GUI, Keycode.SHIFT, Keycode.FOUR)
-        last_action = "SCREENSHOT"
-    
-    elif action == "COPY":
-        kbd.send(Keycode.GUI, Keycode.C)
-        last_action = "COPY"
-    
-    elif action == "PASTE":
-        kbd.send(Keycode.GUI, Keycode.V)
-        last_action = "PASTE"
-    
-    elif action == "UNDO":
-        kbd.send(Keycode.GUI, Keycode.Z)
-        last_action = "UNDO"
-    
-    # System Controls
-    elif action == "SWITCH_TABS" or action == "TABS":
-        kbd.send(Keycode.CONTROL, Keycode.TAB)
-        last_action = "SWITCH TABS"
-    
-    elif action == "ZOOM_IN":
-        kbd.send(Keycode.GUI, Keycode.EQUALS)
-        last_action = "ZOOM IN"
-    
-    elif action == "ZOOM_OUT":
-        kbd.send(Keycode.GUI, Keycode.MINUS)
-        last_action = "ZOOM OUT"
-    
-    elif action == "DESKTOP":
-        kbd.send(Keycode.F11)
-        last_action = "DESKTOP"
-    
-    # Legacy support
-    elif action == "SWITCH":
-        kbd.press(Keycode.GUI, Keycode.TAB)
-        kbd.release(Keycode.TAB)
-        time.sleep(0.1)
-        kbd.release_all()
-        last_action = "APP SWITCH"
-    
-    elif action == "DELETE" or action == "FORWARD_DELETE":
-        kbd.send(Keycode.DELETE)
-        last_action = "FWD DELETE"
-    
-    else:
-        return False
+    try:
+        # Media Controls
+        if action == "PLAY_PAUSE" or action == "PLAY":
+            cc.send(ConsumerControlCode.PLAY_PAUSE)
+            last_action = "PLAY/PAUSE"
+        
+        elif action == "PREV_TRACK" or action == "PREV":
+            cc.send(ConsumerControlCode.SCAN_PREVIOUS_TRACK)
+            last_action = "PREV TRACK"
+        
+        elif action == "NEXT_TRACK" or action == "NEXT":
+            cc.send(ConsumerControlCode.SCAN_NEXT_TRACK)
+            last_action = "NEXT TRACK"
+        
+        elif action == "MUTE":
+            cc.send(ConsumerControlCode.MUTE)
+            last_action = "MUTE"
+        
+        # Volume Controls
+        elif action == "VOLUP":
+            cc.send(ConsumerControlCode.VOLUME_INCREMENT)
+            volume_level = min(100, volume_level + 2)
+            last_action = "VOL +2"
+        
+        elif action == "VOLDN":
+            cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+            volume_level = max(0, volume_level - 2)
+            last_action = "VOL -2"
+        
+        # App Controls
+        elif action == "WORKPLACE_RIGHT" or action == "WORKPLACE":
+            kbd.send(Keycode.CONTROL, Keycode.RIGHT_ARROW)
+            last_action = "WORKPLACE →"
+        
+        elif action == "QUIT_APP" or action == "QUIT":
+            kbd.press(Keycode.GUI, Keycode.Q)
+            time.sleep(0.05)
+            kbd.release_all()
+            last_action = "QUIT APP"
+        
+        elif action == "DICTATION" or action == "DICTATE":
+            # Double‑press Control key quickly for dictation
+            kbd.press(Keycode.CONTROL)
+            kbd.release(Keycode.CONTROL)
+            time.sleep(0.03)  # Very short delay between presses
+            kbd.press(Keycode.CONTROL)
+            kbd.release(Keycode.CONTROL)
+            last_action = "DICTATION"
+        
+        elif action == "MODE_TOGGLE" or action == "MODE":
+            current_mode = (current_mode + 1) % 2
+            last_action = "MODE: VOL" if current_mode == 0 else "MODE: SCRL"
+        
+        # Edit Controls
+        elif action == "SCREENSHOT" or action == "SNIP":
+            kbd.send(Keycode.GUI, Keycode.SHIFT, Keycode.FOUR)
+            last_action = "SCREENSHOT"
+        
+        elif action == "COPY":
+            kbd.send(Keycode.GUI, Keycode.C)
+            last_action = "COPY"
+        
+        elif action == "PASTE":
+            kbd.send(Keycode.GUI, Keycode.V)
+            last_action = "PASTE"
+        
+        elif action == "UNDO":
+            kbd.send(Keycode.GUI, Keycode.Z)
+            last_action = "UNDO"
+        
+        # System Controls
+        elif action == "SWITCH_TABS" or action == "TABS":
+            kbd.send(Keycode.CONTROL, Keycode.TAB)
+            last_action = "SWITCH TABS"
+        
+        elif action == "ZOOM_IN":
+            kbd.send(Keycode.GUI, Keycode.EQUALS)
+            last_action = "ZOOM IN"
+        
+        elif action == "ZOOM_OUT":
+            kbd.send(Keycode.GUI, Keycode.MINUS)
+            last_action = "ZOOM OUT"
+        
+        elif action == "DESKTOP":
+            kbd.send(Keycode.F11)
+            last_action = "DESKTOP"
+        
+        # Legacy support
+        elif action == "SWITCH":
+            kbd.press(Keycode.GUI, Keycode.TAB)
+            kbd.release(Keycode.TAB)
+            time.sleep(0.1)
+            kbd.release_all()
+            last_action = "APP SWITCH"
+        
+        elif action == "DELETE" or action == "FORWARD_DELETE":
+            kbd.send(Keycode.DELETE)
+            last_action = "FWD DELETE"
+        
+        else:
+            return False
+    except Exception:
+        pass  # USB momentarily busy — skip this command, keep loop alive
     
     display_dirty = True
     wake_up()
@@ -442,11 +445,14 @@ while True:
         wake_up()
         delta = max(-5, min(5, delta))
         if current_mode == 0:
-            for _ in range(abs(delta)):
-                if delta > 0:
-                    cc.send(ConsumerControlCode.VOLUME_INCREMENT)
-                else:
-                    cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+            try:
+                for _ in range(abs(delta)):
+                    if delta > 0:
+                        cc.send(ConsumerControlCode.VOLUME_INCREMENT)
+                    else:
+                        cc.send(ConsumerControlCode.VOLUME_DECREMENT)
+            except Exception:
+                pass  # USB momentarily busy — keep loop alive
             volume_level = max(0, min(100, volume_level + delta * 2))
             last_action = "VOL ADJUST"
         else:
